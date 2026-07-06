@@ -100,6 +100,12 @@ test("登免税: 評価額0でも最低1,000円（登免税法の最低額）", 
   assert.equal(calcTaxDetail("transfer", { causeType: "sale", landValue: 0, buildingValue: 0 }, "none").total, 1000);
 });
 
+test("登免税(売買): 土地のみ→建物側の幻の税額¥20が出ない", () => {
+  const r = calcTaxDetail("transfer", { causeType: "sale", landValue: 3000000, buildingValue: 0 }, "none");
+  assert.equal(r.total, 45000); // 3,000,000×15/1000、建物0円は不加算（旧: ¥20加算バグ）
+  assert.equal(r.bt, 0);
+});
+
 // ───────── 報酬 calcItem ─────────
 const G = (over = {}) => ({
   ft: DEF_FT, unit: DEF_UNIT, surcharges: [], enabledSc: {},

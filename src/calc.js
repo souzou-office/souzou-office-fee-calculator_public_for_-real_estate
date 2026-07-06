@@ -66,11 +66,11 @@ function calcTaxDetail(type,it,hc){
   if(type==="transfer"){
     if(it.causeType==="sale"){
       const lraw=it.landValue||0,braw=it.buildingValue||0;
-      const lb=f1(lraw),bb=f1(braw);
+      const lb=lraw>0?f1(lraw):0,bb=braw>0?f1(braw):0;
       let lr=15/1000,br=20/1000;
       if(hc==="general")br=3/1000;if(hc==="premium")br=1/1000;
       const ltRaw=lb*lr,btRaw=bb*br,sumRaw=ltRaw+btRaw;
-      const total=f2(sumRaw);
+      const total=sumRaw>0?f2(sumRaw):1000;
       return{total,steps:[
         ...(lraw>0?[{l:"土地 課税標準",v:`${lraw.toLocaleString()} → ${lb.toLocaleString()}（千円未満切捨）`},
           {l:"土地 税額",v:`${lb.toLocaleString()} × ${lr*1000}/1000 = ${ltRaw.toLocaleString()}`}]:[]),
