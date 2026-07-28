@@ -471,7 +471,9 @@ function Meisai({items,g,scTotal,rows,stdItems,rate}){
   const{regLines,feeRows,regTax,jippiTotal,feeExcl,consumptionTax,feeIncl,grand}=m;
   const[copied,setCopied]=useState("");
   const doCopy=async()=>{
-    const ok=await copyToClipboard(meisaiToTSV(m,rate));
+    const d=new Date();
+    const tsv=meisaiToTSV(m,rate,{billingDate:`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`});
+    const ok=await copyToClipboard(tsv);
     setCopied(ok?"ok":"ng");
     setTimeout(()=>setCopied(""),2000);
   };
@@ -479,7 +481,7 @@ function Meisai({items,g,scTotal,rows,stdItems,rate}){
     <div className="rounded-xl p-5 mb-4" style={{background:"linear-gradient(135deg,#4338ca,#3730a3)",color:"#fff",boxShadow:"0 4px 16px rgba(67,56,202,0.25)"}}>
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold" style={{color:"rgba(255,255,255,0.7)"}}>ご請求明細</h3>
-        <button onClick={doCopy} title="項目・報酬・登免税/実費をタブ区切りでコピーします"
+        <button onClick={doCopy} title="帳票ソフト貼り付け用のタブ区切りテキストをコピーします（顧客名・振込先は空欄）"
           className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
           style={{background:copied==="ok"?"rgba(16,185,129,0.9)":copied==="ng"?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.15)",
             color:"#fff",border:"1px solid rgba(255,255,255,0.35)"}}>

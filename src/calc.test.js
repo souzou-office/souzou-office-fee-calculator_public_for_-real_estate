@@ -242,27 +242,48 @@ test("buildMeisai: 加算(scTotal)は先頭の取引項目にだけ乗る", () =
   assert.equal(m.regFee, 79000 + 5000 + 55600);
 });
 
-test("meisaiToTSV: タブ区切り・数値は桁区切りなしの生の数字", () => {
+test("meisaiToTSV: 帳票ソフトの行ラベル形式（空欄の行も必ず出す）", () => {
   const g = G({ hasTr: true, hasMtg: true, counts: { cert: 2 }, stdItems: DEF_STD_ITEMS });
-  const tsv = meisaiToTSV(buildMeisai(MEISAI_ITEMS, g, 0, MEISAI_ROWS, DEF_STD_ITEMS, 10), 10);
-  const lines = tsv.split("\n");
-  assert.equal(lines[0], "項目\t報酬\t登免税・実費");
-  assert.equal(lines[1], "所有権移転\t79000\t250000");
-  assert.equal(lines[2], "抵当権設定（債権額3,000万円）\t55600\t120000");
-  assert.equal(lines[3], "登記事項証明書 2通\t2000\t1200");
-  assert.equal(lines[4], "郵送費\t0\t2400");
-  assert.equal(lines[5], "報酬（税抜）\t136600");
-  assert.equal(lines[6], "消費税（10%）\t13660");
-  assert.equal(lines[7], "報酬（税込）\t150260");
-  assert.equal(lines[8], "登録免許税\t370000");
-  assert.equal(lines[9], "実費・立替金\t3600");
-  assert.equal(lines[10], "合計請求額\t523860");
-  assert.equal(lines.length, 11);
-  assert.ok(!tsv.includes("¥"), "金額に¥を含めない（貼り付け先で数値として扱えるように）");
+  const m = buildMeisai(MEISAI_ITEMS, g, 0, MEISAI_ROWS, DEF_STD_ITEMS, 10);
+  const tsv = meisaiToTSV(m, 10, { billingDate: "2026/7/28" });
+  assert.deepEqual(tsv.split("\n"), [
+    "事務所\t",
+    "請求日\t2026/7/28",
+    "事件番号\t",
+    "得意先\t",
+    "顧客名①\t\t様",
+    "顧客名②\t\t",
+    "顧客名③\t\t",
+    "振込先①\t\t\t\t",
+    "源泉対象\t0",
+    "消費税課税\t1\t10.00%",
+    "作業項目\t所有権移転\t79000\t250000",
+    "作業項目\t抵当権設定（債権額3,000万円）\t55600\t120000",
+    "作業項目\t登記事項証明書 2通\t2000\t1200",
+    "作業項目\t郵送費\t0\t2400",
+    "備考\t",
+    "メモ\t",
+  ]);
+  assert.ok(!tsv.includes("¥"), "金額に¥や桁区切りを含めない（ソフト側で数値として読めるように）");
+  assert.ok(!tsv.includes("合計"), "合計行は出さない（ソフト側が作業項目から算出する）");
 });
 
-test("meisaiToTSV: 実費0のときは実費行を出さない", () => {
+test("meisaiToTSV: 請求日が未指定でもラベル行は空欄で残る", () => {
   const g = G({ hasTr: true, counts: {}, stdItems: DEF_STD_ITEMS });
-  const tsv = meisaiToTSV(buildMeisai([MEISAI_ITEMS[0]], g, 0, [], DEF_STD_ITEMS, 10), 10);
-  assert.ok(!tsv.includes("実費・立替金"));
+  const lines = meisaiToTSV(buildMeisai([MEISAI_ITEMS[0]], g, 0, [], DEF_STD_ITEMS, 10), 10).split("\n");
+  assert.equal(lines[0], "事務所\t");
+  assert.equal(lines[1], "請求日\t");
+  assert.equal(lines.filter((l) => l.startsWith("作業項目\t")).length, 1);
+});
+
+test("meisaiToTSV: 消費税率は小数2桁＋%（8%でも8.00%）", () => {
+  const g = G({ hasTr: true, counts: {}, stdItems: DEF_STD_ITEMS });
+  const tsv = meisaiToTSV(buildMeisai([MEISAI_ITEMS[0]], g, 0, [], DEF_STD_ITEMS, 8), 8);
+  assert.ok(tsv.includes("消費税課税\t1\t8.00%"));
+});
+
+test("meisaiToTSV: 加算(scTotal)は先頭の作業項目の報酬に含めて出す", () => {
+  const g = G({ hasTr: true, hasMtg: true, counts: {}, stdItems: DEF_STD_ITEMS });
+  const tsv = meisaiToTSV(buildMeisai(MEISAI_ITEMS, g, 5000, [], DEF_STD_ITEMS, 10), 10);
+  assert.ok(tsv.includes("作業項目\t所有権移転\t84000\t250000")); // 77,000+2,000+加算5,000
 });

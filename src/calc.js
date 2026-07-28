@@ -200,18 +200,26 @@ function buildMeisai(items,g,scTotal,rows,stdItems,rate){
   return{regLines,feeRows,regFee,otherFee,regTax,jippiTotal,feeExcl,consumptionTax,feeIncl,grand};
 }
 
-// 明細を帳票ソフト貼り付け用のTSVに（タブ区切り・数値は生の数字で桁区切りなし）
-function meisaiToTSV(m,rate){
+// 明細を帳票ソフト貼り付け用のTSVに（行ラベル＋タブ区切り。数値は桁区切りなしの生の数字）
+// 顧客名・振込先などはソフトが行の並びで読むため、値が空でもラベル行は必ず出力する。
+// 合計はソフト側が「作業項目」と「消費税課税」から算出するので出力しない。
+// 事務所・事件番号・得意先・顧客名・振込先・備考・メモはソフト側で入力するため常に空欄
+function meisaiToTSV(m,rate,opts={}){
   const L=[];const p=(...v)=>L.push(v.join("\t"));
-  p("項目","報酬","登免税・実費");
-  m.regLines.forEach(({it,c,fee})=>p(itemLabel(it),String(fee),String(c.tax)));
-  m.feeRows.forEach(r=>p(r.name,String(r.fee),String(r.jippi)));
-  p("報酬（税抜）",String(m.feeExcl));
-  p(`消費税（${rate}%）`,String(m.consumptionTax));
-  p("報酬（税込）",String(m.feeIncl));
-  p("登録免許税",String(m.regTax));
-  if(m.jippiTotal>0)p("実費・立替金",String(m.jippiTotal));
-  p("合計請求額",String(m.grand));
+  p("事務所","");
+  p("請求日",opts.billingDate||"");
+  p("事件番号","");
+  p("得意先","");
+  p("顧客名①","","様");
+  p("顧客名②","","");
+  p("顧客名③","","");
+  p("振込先①","","","","");
+  p("源泉対象","0");
+  p("消費税課税","1",`${Number(rate).toFixed(2)}%`);
+  m.regLines.forEach(({it,c,fee})=>p("作業項目",itemLabel(it),String(fee),String(c.tax)));
+  m.feeRows.forEach(r=>p("作業項目",r.name,String(r.fee),String(r.jippi)));
+  p("備考","");
+  p("メモ","");
   return L.join("\n");
 }
 
