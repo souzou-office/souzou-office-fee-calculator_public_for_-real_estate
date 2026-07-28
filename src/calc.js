@@ -185,4 +185,42 @@ function buildFeeRows(rows,stdItems){
   return out;
 }
 
-export { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, IX, lk, LB, itemLabel, f1, f2, calcTaxDetail, calcItem, fmt, fmtM, getExpList, getXFee, buildFeeRows };
+// ご請求明細の行と合計をまとめて算出（画面表示・コピーで共用）
+function buildMeisai(items,g,scTotal,rows,stdItems,rate){
+  const feeRows=buildFeeRows(rows,stdItems);
+  const regLines=items.map((it,i)=>{const c=calcItem(it,g);const fee=i===0?c.fee+scTotal:c.fee;return{it,c,fee,addSc:i===0?scTotal:0};});
+  const regTax=regLines.reduce((s,l)=>s+l.c.tax,0);
+  const regFee=regLines.reduce((s,l)=>s+l.fee,0);
+  const otherFee=feeRows.reduce((s,r)=>s+r.fee,0);
+  const jippiTotal=feeRows.reduce((s,r)=>s+r.jippi,0);
+  const feeExcl=regFee+otherFee;
+  const consumptionTax=Math.floor(feeExcl*rate/100);
+  const feeIncl=feeExcl+consumptionTax;
+  const grand=feeIncl+regTax+jippiTotal;
+  return{regLines,feeRows,regFee,otherFee,regTax,jippiTotal,feeExcl,consumptionTax,feeIncl,grand};
+}
+
+// 明細を帳票ソフト貼り付け用のTSVに（行ラベル＋タブ区切り。数値は桁区切りなしの生の数字）
+// 顧客名・振込先などはソフトが行の並びで読むため、値が空でもラベル行は必ず出力する。
+// 合計はソフト側が「作業項目」と「消費税課税」から算出するので出力しない。
+// 事務所・事件番号・得意先・顧客名・振込先・備考・メモはソフト側で入力するため常に空欄
+function meisaiToTSV(m,rate,opts={}){
+  const L=[];const p=(...v)=>L.push(v.join("\t"));
+  p("事務所","");
+  p("請求日",opts.billingDate||"");
+  p("事件番号","");
+  p("得意先","");
+  p("顧客名①","","様");
+  p("顧客名②","","");
+  p("顧客名③","","");
+  p("振込先①","","","","");
+  p("源泉対象","0");
+  p("消費税課税","1",`${Number(rate).toFixed(2)}%`);
+  m.regLines.forEach(({it,c,fee})=>p("作業項目",itemLabel(it),String(fee),String(c.tax)));
+  m.feeRows.forEach(r=>p("作業項目",r.name,String(r.fee),String(r.jippi)));
+  p("備考","");
+  p("メモ","");
+  return L.join("\n");
+}
+
+export { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, IX, lk, LB, itemLabel, f1, f2, calcTaxDetail, calcItem, fmt, fmtM, getExpList, getXFee, buildFeeRows, buildMeisai, meisaiToTSV };

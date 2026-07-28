@@ -1,9 +1,13 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 
-import { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, itemLabel, calcItem, f1, f2, fmt, fmtM, getExpList, getXFee, buildFeeRows } from "./calc";
+import { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, itemLabel, calcItem, f1, f2, fmt, fmtM, getExpList, getXFee, buildMeisai, meisaiToTSV } from "./calc";
 import { exportAllSettings, importAllSettings, SETTINGS_NOTE } from "./settings";
 // テスト版(/test/)は本番と同一ドメインのため、保存キーを分けて本番設定を保護する
 const CFG_KEY = ((import.meta.env && import.meta.env.BASE_URL) || "").includes("/test/") ? "test-fee-config-v4" : "fee-config-v4";
+// 帳票ソフト貼り付け用コピー：事務所の帳票ソフト専用の機能なので通常は非表示。
+// URLに ?tsv=1 を付けて一度開いたブラウザだけで有効になる（?tsv=0 で解除）。
+// 本番と /test/ で共用（一度有効にすれば両方で使える）
+const TSV_KEY = "fee-tsv-copy";
 
 // ── UI atoms ──
 const Inp=({label,value,onChange,type="number",suffix,note,min,step,placeholder,className=""})=>(
@@ -449,21 +453,45 @@ function Card({item,index,onUpdate,onRemove,g,scTotal=0}){
     </div>);
 }
 
+// クリップボードへコピー（httpsでない環境や旧ブラウザ向けにtextareaでフォールバック）
+async function copyToClipboard(text){
+  try{
+    if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return true;}
+  }catch{}
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text;ta.setAttribute("readonly","");
+    ta.style.position="fixed";ta.style.top="-1000px";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,ta.value.length);
+    const ok=document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }catch{return false;}
+}
+
 // ── 明細（画面表示用の内訳） ──
-function Meisai({items,g,scTotal,rows,stdItems,rate}){
-  const feeRows=buildFeeRows(rows,stdItems);
-  const regLines=items.map((it,i)=>{const c=calcItem(it,g);const fee=i===0?c.fee+scTotal:c.fee;return{it,c,fee,addSc:i===0?scTotal:0};});
-  const regTax=regLines.reduce((s,l)=>s+l.c.tax,0);
-  const regFee=regLines.reduce((s,l)=>s+l.fee,0);
-  const otherFee=feeRows.reduce((s,r)=>s+r.fee,0);
-  const jippiTotal=feeRows.reduce((s,r)=>s+r.jippi,0);
-  const feeExcl=regFee+otherFee;
-  const consumptionTax=Math.floor(feeExcl*rate/100);
-  const feeIncl=feeExcl+consumptionTax;
-  const grand=feeIncl+regTax+jippiTotal;
+function Meisai({items,g,scTotal,rows,stdItems,rate,showCopy}){
+  const m=buildMeisai(items,g,scTotal,rows,stdItems,rate);
+  const{regLines,feeRows,regTax,jippiTotal,feeExcl,consumptionTax,feeIncl,grand}=m;
+  const[copied,setCopied]=useState("");
+  const doCopy=async()=>{
+    const d=new Date();
+    const tsv=meisaiToTSV(m,rate,{billingDate:`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`});
+    const ok=await copyToClipboard(tsv);
+    setCopied(ok?"ok":"ng");
+    setTimeout(()=>setCopied(""),2000);
+  };
   return(
     <div className="rounded-xl p-5 mb-4" style={{background:"linear-gradient(135deg,#4338ca,#3730a3)",color:"#fff",boxShadow:"0 4px 16px rgba(67,56,202,0.25)"}}>
-      <h3 className="text-sm font-bold mb-3" style={{color:"rgba(255,255,255,0.7)"}}>ご請求明細</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold" style={{color:"rgba(255,255,255,0.7)"}}>ご請求明細</h3>
+        {showCopy&&<button onClick={doCopy} title="帳票ソフト貼り付け用のタブ区切りテキストをコピーします（顧客名・振込先は空欄）"
+          className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
+          style={{background:copied==="ok"?"rgba(16,185,129,0.9)":copied==="ng"?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.15)",
+            color:"#fff",border:"1px solid rgba(255,255,255,0.35)"}}>
+          {copied==="ok"?"✓ コピーしました":copied==="ng"?"× コピーできません":"📋 明細をコピー"}
+        </button>}
+      </div>
 
       <table className="w-full" style={{borderCollapse:"collapse"}}>
         <thead>
@@ -537,6 +565,21 @@ export default function App(){
   const[stdItems,setStdItems]=useState(()=>DEF_STD_ITEMS.map(s=>({...s})));
   const[enabledSc,setEnabledSc]=useState({});
   const[commonOpen,setCommonOpen]=useState(true);
+  const[tsvCopy,setTsvCopy]=useState(false);
+
+  // ?tsv=1 で有効化・?tsv=0 で解除。以後はこのブラウザに記憶し、URLからパラメータは消す
+  useEffect(()=>{
+    try{
+      const q=new URLSearchParams(window.location.search);
+      if(q.has("tsv")){
+        localStorage.setItem(TSV_KEY,q.get("tsv")==="0"?"0":"1");
+        q.delete("tsv");
+        const s=q.toString();
+        window.history.replaceState(null,"",window.location.pathname+(s?`?${s}`:"")+window.location.hash);
+      }
+      setTsvCopy(localStorage.getItem(TSV_KEY)==="1");
+    }catch{}
+  },[]);
 
   useEffect(()=>{try{const r=localStorage.getItem(CFG_KEY);if(r){const d=JSON.parse(r);if(d.ft)setFt(d.ft);if(d.unit)setUnit(u=>({...u,...d.unit}));if(Array.isArray(d.surcharges))setSurcharges(d.surcharges.filter(s=>s&&!REMOVED_SC_IDS.includes(s.id)));if(Array.isArray(d.stdItems))setStdItems(d.stdItems.filter(si=>si&&si.id&&si.name).map(si=>si.id==="info"&&si.jippi===331?{...si,jippi:330}:si));if(typeof d.rate==="number")setRate(d.rate);}}catch{};},[]);
   useEffect(()=>{try{localStorage.setItem(CFG_KEY,JSON.stringify({ft,unit,surcharges,stdItems,rate}));}catch{};},[ft,unit,surcharges,stdItems,rate]);
@@ -678,7 +721,7 @@ export default function App(){
             </div>}
           </div>
 
-          <Meisai items={items} g={g} scTotal={scTotal} rows={rows} stdItems={stdItems} rate={rate} />
+          <Meisai items={items} g={g} scTotal={scTotal} rows={rows} stdItems={stdItems} rate={rate} showCopy={tsvCopy} />
 
         </div>
 
