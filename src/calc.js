@@ -185,4 +185,34 @@ function buildFeeRows(rows,stdItems){
   return out;
 }
 
-export { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, IX, lk, LB, itemLabel, f1, f2, calcTaxDetail, calcItem, fmt, fmtM, getExpList, getXFee, buildFeeRows };
+// ご請求明細の行と合計をまとめて算出（画面表示・コピーで共用）
+function buildMeisai(items,g,scTotal,rows,stdItems,rate){
+  const feeRows=buildFeeRows(rows,stdItems);
+  const regLines=items.map((it,i)=>{const c=calcItem(it,g);const fee=i===0?c.fee+scTotal:c.fee;return{it,c,fee,addSc:i===0?scTotal:0};});
+  const regTax=regLines.reduce((s,l)=>s+l.c.tax,0);
+  const regFee=regLines.reduce((s,l)=>s+l.fee,0);
+  const otherFee=feeRows.reduce((s,r)=>s+r.fee,0);
+  const jippiTotal=feeRows.reduce((s,r)=>s+r.jippi,0);
+  const feeExcl=regFee+otherFee;
+  const consumptionTax=Math.floor(feeExcl*rate/100);
+  const feeIncl=feeExcl+consumptionTax;
+  const grand=feeIncl+regTax+jippiTotal;
+  return{regLines,feeRows,regFee,otherFee,regTax,jippiTotal,feeExcl,consumptionTax,feeIncl,grand};
+}
+
+// 明細を帳票ソフト貼り付け用のTSVに（タブ区切り・数値は生の数字で桁区切りなし）
+function meisaiToTSV(m,rate){
+  const L=[];const p=(...v)=>L.push(v.join("\t"));
+  p("項目","報酬","登免税・実費");
+  m.regLines.forEach(({it,c,fee})=>p(itemLabel(it),String(fee),String(c.tax)));
+  m.feeRows.forEach(r=>p(r.name,String(r.fee),String(r.jippi)));
+  p("報酬（税抜）",String(m.feeExcl));
+  p(`消費税（${rate}%）`,String(m.consumptionTax));
+  p("報酬（税込）",String(m.feeIncl));
+  p("登録免許税",String(m.regTax));
+  if(m.jippiTotal>0)p("実費・立替金",String(m.jippiTotal));
+  p("合計請求額",String(m.grand));
+  return L.join("\n");
+}
+
+export { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, IX, lk, LB, itemLabel, f1, f2, calcTaxDetail, calcItem, fmt, fmtM, getExpList, getXFee, buildFeeRows, buildMeisai, meisaiToTSV };

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import {
   f1, f2, lk, IX, DEF_FT, DEF_UNIT, DEF_STD_ITEMS,
   calcTaxDetail, calcItem, fmt, fmtM, itemLabel,
-  getExpList, getXFee, buildFeeRows,
+  getExpList, getXFee, buildFeeRows, buildMeisai, meisaiToTSV,
 } from "./calc.js";
 
 // ───────── 端数処理 ─────────
@@ -207,4 +207,62 @@ test("buildFeeRows: 明細行（謄本/郵送/追加。count0は除外）", () =
   assert.deepEqual(out[0], { name: "登記事項証明書 2通", fee: 2000, jippi: 1200 });
   assert.deepEqual(out[1], { name: "郵送費", fee: 0, jippi: 2400 });
   assert.deepEqual(out[2], { name: "日当", fee: 5000, jippi: 1000 });
+});
+
+// ───────── ご請求明細・コピー用TSV ─────────
+const MEISAI_ITEMS = [
+  { type: "transfer", causeType: "sale", landValue: 10000000, buildingValue: 5000000, propCount: 2 },
+  { type: "mortgage", debtAmount: 30000000, propCount: 1 },
+];
+const MEISAI_ROWS = [
+  { kind: "std", stdId: "cert", count: 2 },
+  { kind: "std", stdId: "info", count: 0 },
+  { kind: "postage", amount: 2400 },
+];
+
+test("buildMeisai: 明細行と合計（報酬・消費税・登免税・実費・合計請求額）", () => {
+  const g = G({ hasTr: true, hasMtg: true, counts: { cert: 2 }, stdItems: DEF_STD_ITEMS });
+  const m = buildMeisai(MEISAI_ITEMS, g, 0, MEISAI_ROWS, DEF_STD_ITEMS, 10);
+  assert.equal(m.regLines.length, 2);
+  assert.equal(m.regFee, 79000 + 55600); // 移転(設定有)1,500万=77,000+不動産加算2,000 / 抵当権設定3,000万=55,600
+  assert.equal(m.otherFee, 2000); // 登記事項証明書 2通
+  assert.equal(m.feeExcl, 136600);
+  assert.equal(m.consumptionTax, 13660);
+  assert.equal(m.feeIncl, 150260);
+  assert.equal(m.regTax, 250000 + 120000);
+  assert.equal(m.jippiTotal, 1200 + 2400);
+  assert.equal(m.grand, 150260 + 370000 + 3600);
+});
+
+test("buildMeisai: 加算(scTotal)は先頭の取引項目にだけ乗る", () => {
+  const g = G({ hasTr: true, hasMtg: true, counts: {}, stdItems: DEF_STD_ITEMS });
+  const m = buildMeisai(MEISAI_ITEMS, g, 5000, [], DEF_STD_ITEMS, 10);
+  assert.equal(m.regLines[0].addSc, 5000);
+  assert.equal(m.regLines[1].addSc, 0);
+  assert.equal(m.regFee, 79000 + 5000 + 55600);
+});
+
+test("meisaiToTSV: タブ区切り・数値は桁区切りなしの生の数字", () => {
+  const g = G({ hasTr: true, hasMtg: true, counts: { cert: 2 }, stdItems: DEF_STD_ITEMS });
+  const tsv = meisaiToTSV(buildMeisai(MEISAI_ITEMS, g, 0, MEISAI_ROWS, DEF_STD_ITEMS, 10), 10);
+  const lines = tsv.split("\n");
+  assert.equal(lines[0], "項目\t報酬\t登免税・実費");
+  assert.equal(lines[1], "所有権移転\t79000\t250000");
+  assert.equal(lines[2], "抵当権設定（債権額3,000万円）\t55600\t120000");
+  assert.equal(lines[3], "登記事項証明書 2通\t2000\t1200");
+  assert.equal(lines[4], "郵送費\t0\t2400");
+  assert.equal(lines[5], "報酬（税抜）\t136600");
+  assert.equal(lines[6], "消費税（10%）\t13660");
+  assert.equal(lines[7], "報酬（税込）\t150260");
+  assert.equal(lines[8], "登録免許税\t370000");
+  assert.equal(lines[9], "実費・立替金\t3600");
+  assert.equal(lines[10], "合計請求額\t523860");
+  assert.equal(lines.length, 11);
+  assert.ok(!tsv.includes("¥"), "金額に¥を含めない（貼り付け先で数値として扱えるように）");
+});
+
+test("meisaiToTSV: 実費0のときは実費行を出さない", () => {
+  const g = G({ hasTr: true, counts: {}, stdItems: DEF_STD_ITEMS });
+  const tsv = meisaiToTSV(buildMeisai([MEISAI_ITEMS[0]], g, 0, [], DEF_STD_ITEMS, 10), 10);
+  assert.ok(!tsv.includes("実費・立替金"));
 });

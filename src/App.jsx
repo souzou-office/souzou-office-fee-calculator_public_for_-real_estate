@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 
-import { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, itemLabel, calcItem, f1, f2, fmt, fmtM, getExpList, getXFee, buildFeeRows } from "./calc";
+import { DEF_FT, DEF_SURCHARGES, REMOVED_SC_IDS, DEF_UNIT, DEF_STD_ITEMS, COL_NAMES, itemLabel, calcItem, f1, f2, fmt, fmtM, getExpList, getXFee, buildMeisai, meisaiToTSV } from "./calc";
 import { exportAllSettings, importAllSettings, SETTINGS_NOTE } from "./settings";
 // テスト版(/test/)は本番と同一ドメインのため、保存キーを分けて本番設定を保護する
 const CFG_KEY = ((import.meta.env && import.meta.env.BASE_URL) || "").includes("/test/") ? "test-fee-config-v4" : "fee-config-v4";
@@ -449,21 +449,43 @@ function Card({item,index,onUpdate,onRemove,g,scTotal=0}){
     </div>);
 }
 
+// クリップボードへコピー（httpsでない環境や旧ブラウザ向けにtextareaでフォールバック）
+async function copyToClipboard(text){
+  try{
+    if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(text);return true;}
+  }catch{}
+  try{
+    const ta=document.createElement("textarea");
+    ta.value=text;ta.setAttribute("readonly","");
+    ta.style.position="fixed";ta.style.top="-1000px";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();ta.setSelectionRange(0,ta.value.length);
+    const ok=document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }catch{return false;}
+}
+
 // ── 明細（画面表示用の内訳） ──
 function Meisai({items,g,scTotal,rows,stdItems,rate}){
-  const feeRows=buildFeeRows(rows,stdItems);
-  const regLines=items.map((it,i)=>{const c=calcItem(it,g);const fee=i===0?c.fee+scTotal:c.fee;return{it,c,fee,addSc:i===0?scTotal:0};});
-  const regTax=regLines.reduce((s,l)=>s+l.c.tax,0);
-  const regFee=regLines.reduce((s,l)=>s+l.fee,0);
-  const otherFee=feeRows.reduce((s,r)=>s+r.fee,0);
-  const jippiTotal=feeRows.reduce((s,r)=>s+r.jippi,0);
-  const feeExcl=regFee+otherFee;
-  const consumptionTax=Math.floor(feeExcl*rate/100);
-  const feeIncl=feeExcl+consumptionTax;
-  const grand=feeIncl+regTax+jippiTotal;
+  const m=buildMeisai(items,g,scTotal,rows,stdItems,rate);
+  const{regLines,feeRows,regTax,jippiTotal,feeExcl,consumptionTax,feeIncl,grand}=m;
+  const[copied,setCopied]=useState("");
+  const doCopy=async()=>{
+    const ok=await copyToClipboard(meisaiToTSV(m,rate));
+    setCopied(ok?"ok":"ng");
+    setTimeout(()=>setCopied(""),2000);
+  };
   return(
     <div className="rounded-xl p-5 mb-4" style={{background:"linear-gradient(135deg,#4338ca,#3730a3)",color:"#fff",boxShadow:"0 4px 16px rgba(67,56,202,0.25)"}}>
-      <h3 className="text-sm font-bold mb-3" style={{color:"rgba(255,255,255,0.7)"}}>ご請求明細</h3>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-bold" style={{color:"rgba(255,255,255,0.7)"}}>ご請求明細</h3>
+        <button onClick={doCopy} title="項目・報酬・登免税/実費をタブ区切りでコピーします"
+          className="text-xs font-medium px-2.5 py-1.5 rounded-lg whitespace-nowrap"
+          style={{background:copied==="ok"?"rgba(16,185,129,0.9)":copied==="ng"?"rgba(239,68,68,0.9)":"rgba(255,255,255,0.15)",
+            color:"#fff",border:"1px solid rgba(255,255,255,0.35)"}}>
+          {copied==="ok"?"✓ コピーしました":copied==="ng"?"× コピーできません":"📋 明細をコピー"}
+        </button>
+      </div>
 
       <table className="w-full" style={{borderCollapse:"collapse"}}>
         <thead>
