@@ -18,46 +18,20 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout production (main)
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Enable GitHub Pages (Source = GitHub Actions) if not yet enabled
+        uses: actions/configure-pages@v5
         with:
-          ref: main
-          path: prod
-      - name: Checkout test branch
-        uses: actions/checkout@v4
-        with:
-          ref: claude/youthful-noether-xcpdeu
-          path: test
+          enablement: true
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Build production (root)
-        run: |
-          cd prod
-          npm ci
-          npm run build
-
-      - name: Build test (/test/) - non-blocking so prod always deploys
-        run: |
-          (cd test && npm ci && npm run build -- --base=/fee-calculator_public/test/) || echo "TEST BUILD FAILED - skipping /test/"
-
-      - name: Assemble site (prod at root, test under /test/)
-        run: |
-          rm -rf _site
-          mkdir -p _site
-          cp -r prod/dist/. _site/
-          if [ -d test/dist ]; then
-            mkdir -p _site/test
-            cp -r test/dist/. _site/test/
-            echo "Included /test/ build"
-          else
-            echo "No test/dist - /test/ omitted this run"
-          fi
-
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: _site
+          path: dist
 
   deploy:
     needs: build
