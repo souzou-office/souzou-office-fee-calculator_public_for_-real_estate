@@ -130,11 +130,11 @@ function openPrint(inp, est) {
   .tot{margin-top:8px;padding:9px 12px;border:2px solid ${C};border-radius:6px;display:flex;justify-content:space-between;font-size:15px;font-weight:700;color:${C}}
   .note{margin-top:18px;font-size:11px;color:#777;line-height:1.7}.office{margin-top:14px;text-align:right;font-size:12px;color:#333}
   @media print{body{margin:14mm}}</style></head><body>
-  <h1>登記費用 概算</h1><div class=date>${new Date().toLocaleDateString("ja-JP")} 作成</div>
+  <h1>登記費用 概算（参考例）</h1><div class=date>${new Date().toLocaleDateString("ja-JP")} 作成</div>
   <div class=cond>${cond.filter(Boolean).join("　／　")}</div>
   ${block("買主様ご負担", est.buyer)}
   ${est.seller ? block("売主様ご負担", est.seller) : ""}
-  <div class=note>※ 本書は入力いただいた評価額等に基づく概算です。実際の費用は登記事項・評価証明書・契約内容の確認後に確定します。<br>
+  <div class=note><b>※ 本書の報酬・登録免許税・実費は、入力いただいた評価額等に基づく計算例（一例）です。</b>実際の費用は物件・登記事項・評価証明書・契約内容の確認後に確定し、本書の金額と異なる場合があります。正式なお見積りは下記までご依頼ください。<br>
   ※ 登録免許税の税率は作成日時点の法令によります（土地売買15/1000は令和8年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで）。</div>
   <div class=office>${CONFIG.officeName}${CONFIG.contact ? "　" + CONFIG.contact : ""}</div>
   <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
@@ -151,7 +151,7 @@ function Summary({ title, s, accent, showSteps }) {
     <Card>
       <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
         <h3 className="text-sm font-bold" style={{ color: "#1a2233" }}>{title}の内訳</h3>
-        <span className="text-[11px]" style={{ color: "#8393a7" }}>金額の内訳をご確認いただけます。</span>
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#fef3c7", color: "#92400e" }}>金額は一例です</span>
       </div>
       <table className="w-full" style={{ borderCollapse: "collapse" }}>
         <thead><tr style={{ background: "#f6f8fc" }}>
@@ -230,7 +230,10 @@ function Hero({ est, hasInput }) {
       <div className="relative flex items-start gap-3">
         <span className="flex-shrink-0 flex items-center justify-center rounded-xl" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.22)" }}><I.calc width={24} height={24} /></span>
         <div className="min-w-0 flex-1">
-          <div className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.78)" }}>買主様ご負担 概算合計（報酬税込＋登録免許税＋実費）</div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.78)" }}>買主様ご負担 概算合計（報酬税込＋登録免許税＋実費）</span>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded" style={{ background: "#fde68a", color: "#78350f", textShadow: "none" }}>金額は一例</span>
+          </div>
           <div className="font-bold mt-1" style={{ fontSize: 36, lineHeight: 1.15, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>{fmt(est.buyer.grand)}</div>
           <div className="flex gap-x-4 gap-y-1 mt-2 text-xs flex-wrap" style={{ color: "rgba(255,255,255,0.88)" }}>
             <span>報酬（税込） <b>{fmt(est.buyer.feeIncl)}</b></span>
@@ -325,13 +328,13 @@ export default function Estimate() {
           <button onClick={() => openPrint(inp, est)} disabled={!hasInput}
             className="w-full py-3 rounded-xl text-sm font-bold mb-4 flex items-center justify-center gap-2"
             style={{ background: "#fff", color: hasInput ? C : "#a0aec0", border: `1.5px solid ${hasInput ? "#c7d2fe" : "#e3e8f0"}`, cursor: hasInput ? "pointer" : "default", boxShadow: hasInput ? "0 2px 8px rgba(67,56,202,0.10)" : "none" }}>
-            <I.print width={18} height={18} /> 概算書を印刷・PDF保存
+            <I.print width={18} height={18} /> 概算書（参考例）を印刷・PDF保存
           </button>
 
           <div className="flex gap-2.5 rounded-xl p-3.5" style={{ background: "#eef4ff", border: "1px solid #d6e2fb" }}>
             <span className="flex-shrink-0" style={{ color: "#3b82f6", marginTop: 1 }}><I.info width={16} height={16} /></span>
             <div className="text-[11px] leading-relaxed" style={{ color: "#3a4a66" }}>
-              ※ 本シミュレーターの金額は概算です。実際の費用は登記事項・評価証明書・契約内容の確認後に確定します。<br />
+              <b style={{ color: "#1e3a8a" }}>※ この画面に表示される報酬・登録免許税・実費は、入力内容に基づく計算例（一例）です。</b>実際の費用は物件・登記事項・評価証明書・契約内容の確認後に確定し、表示額と異なる場合があります。正式なお見積りは{CONFIG.officeName}までご依頼ください。<br />
               ※ 登録免許税の税率：土地売買15/1000は令和8年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで。<br />
               ※ 相続・贈与・根抵当権・敷地権の細かな按分など、この画面で扱えない案件は{CONFIG.officeName}までお問い合わせください。{CONFIG.contact && <>（{CONFIG.contact}）</>}
             </div>
