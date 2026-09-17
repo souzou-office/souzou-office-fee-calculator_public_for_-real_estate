@@ -7,68 +7,95 @@ import { buildEstimate, DEFAULT_INPUT } from "./estimate";
 import { CONFIG } from "./estimateConfig";
 
 const C = "#4338ca";
-const inputStyle = { background: "#f0f3f8", border: "1.5px solid #dce1ea", color: "#1a2233", fontVariantNumeric: "tabular-nums" };
-const focus = (e) => { e.target.style.borderColor = C; e.target.style.background = "#fff"; };
-const blur = (e) => { e.target.style.borderColor = "#dce1ea"; e.target.style.background = "#f0f3f8"; };
+const inputStyle = { background: "#fff", border: "1.5px solid #dce1ea", color: "#1a2233", fontVariantNumeric: "tabular-nums" };
+const focus = (e) => { e.target.style.borderColor = C; e.target.style.boxShadow = "0 0 0 3px rgba(67,56,202,0.12)"; };
+const blur = (e) => { e.target.style.borderColor = "#dce1ea"; e.target.style.boxShadow = "none"; };
 
-function Label({ children, hint }) {
+// ── アイコン（インラインSVG） ──
+const I = {
+  home: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h5v-6h4v6h5V10" /></svg>,
+  doc: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M7 3h7l5 5v13H7z" /><path d="M14 3v5h5" /><path d="M10 13h6M10 17h6" /></svg>,
+  card: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 10h18M7 15h4" /></svg>,
+  mail: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="3" y="5" width="18" height="14" rx="2" /><path d="M3 7l9 6 9-6" /></svg>,
+  bank: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M3 10l9-6 9 6" /><path d="M5 10v8M9 10v8M15 10v8M19 10v8M3 20h18" /></svg>,
+  calc: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><rect x="5" y="3" width="14" height="18" rx="2" /><path d="M8 7h8M8 12h2M12 12h2M16 12h0M8 16h2M12 16h2M16 16h0" /></svg>,
+  print: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M7 8V4h10v4" /><rect x="4" y="8" width="16" height="9" rx="2" /><path d="M7 14h10v6H7z" /></svg>,
+  info: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 8h0" /></svg>,
+  erase: (p) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" {...p}><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13" /></svg>,
+};
+const lineIcon = (it) => ({ transfer: I.home, preservation: I.home, mortgage: I.bank, deletion: I.erase, addressChange: I.card })[it.type] || I.doc;
+
+// ── 小パーツ ──
+function Step({ n, title, sub }) {
   return (
-    <label className="block text-xs font-medium mb-1" style={{ color: "#566275" }}>
-      {children}{hint && <span className="ml-1 font-normal" style={{ color: "#8393a7" }}>{hint}</span>}
+    <div className="flex items-start gap-2.5 mb-3">
+      <span className="flex-shrink-0 flex items-center justify-center rounded-full text-white text-xs font-bold" style={{ width: 24, height: 24, background: C, marginTop: 1 }}>{n}</span>
+      <div>
+        <div className="text-sm font-bold" style={{ color: "#1a2233" }}>{title}</div>
+        {sub && <div className="text-xs mt-0.5" style={{ color: "#8393a7" }}>{sub}</div>}
+      </div>
+    </div>
+  );
+}
+function Help({ text }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-block align-middle ml-1">
+      <button type="button" aria-label="説明" onClick={() => setOpen(!open)} onBlur={() => setOpen(false)} title={text}
+        className="inline-flex items-center justify-center rounded-full text-[10px] font-bold"
+        style={{ width: 15, height: 15, border: "1.5px solid #b8c1d1", color: "#8393a7", background: "#fff", lineHeight: 1 }}>?</button>
+      {open && (
+        <span className="absolute z-20 left-0 mt-1 rounded-lg p-2.5 text-xs font-normal shadow-lg" style={{ width: 240, background: "#1a2233", color: "#fff", lineHeight: 1.6 }}>{text}</span>
+      )}
+    </span>
+  );
+}
+function Label({ children, hint, help }) {
+  return (
+    <label className="block text-xs font-medium mb-1.5" style={{ color: "#3a4557" }}>
+      {children}{help && <Help text={help} />}{hint && <span className="ml-1.5 font-normal" style={{ color: "#8393a7" }}>{hint}</span>}
     </label>
   );
 }
-function YenInput({ label, hint, value, onChange, placeholder, note }) {
+// 金額入力：カンマ区切りで表示し、数値（円）で保持する
+function YenInput({ label, hint, help, value, onChange, placeholder, note }) {
   const n = Number(value) || 0;
+  const shown = value === "" || value == null ? "" : n.toLocaleString();
   return (
     <div className="mb-3">
-      <Label hint={hint}>{label}</Label>
+      <Label hint={hint} help={help}>{label}</Label>
       <div className="flex items-center gap-2">
-        <input type="number" inputMode="numeric" min={0} value={value} placeholder={placeholder}
-          onChange={(e) => onChange(e.target.value === "" ? "" : Number(e.target.value))}
+        <input type="text" inputMode="numeric" value={shown} placeholder={placeholder}
+          onChange={(e) => { const d = e.target.value.replace(/[^0-9０-９]/g, "").replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xfee0)); onChange(d === "" ? "" : Number(d)); }}
           onFocus={focus} onBlur={blur}
           className="w-full px-3 py-2.5 rounded-lg text-base outline-none text-right" style={inputStyle} />
         <span className="text-xs whitespace-nowrap flex-shrink-0" style={{ color: "#8393a7" }}>円</span>
       </div>
-      <div className="text-xs mt-1 min-h-[1rem]" style={{ color: n > 0 ? C : "#a0aec0" }}>
-        {n > 0 ? `${fmtM(Math.ceil(n / 10000))}` : note || ""}
-      </div>
+      <div className="text-xs mt-1 min-h-[1rem]" style={{ color: n > 0 ? C : "#a0aec0" }}>{n > 0 ? fmtM(Math.ceil(n / 10000)) : note || ""}</div>
     </div>
   );
 }
 function Toggle({ label, checked, onChange, color = C, sub }) {
   return (
-    <label className="flex items-center gap-3 cursor-pointer select-none py-1.5" onClick={(e) => { e.preventDefault(); onChange(!checked); }}>
-      <div className="relative rounded-full transition-all flex-shrink-0" style={{ width: 38, height: 22, background: checked ? color : "#dce1ea" }}>
-        <div className="absolute rounded-full bg-white shadow transition-all" style={{ width: 18, height: 18, top: 2, left: checked ? 18 : 2 }} />
+    <label className="flex items-center gap-3 cursor-pointer select-none py-2" onClick={(e) => { e.preventDefault(); onChange(!checked); }}>
+      <div className="relative rounded-full transition-all flex-shrink-0" style={{ width: 40, height: 22, background: checked ? color : "#cbd3df" }}>
+        <div className="absolute rounded-full bg-white shadow transition-all" style={{ width: 18, height: 18, top: 2, left: checked ? 20 : 2 }} />
       </div>
       <div>
-        <div className="text-sm" style={{ color: checked ? "#1a2233" : "#3a4557", fontWeight: checked ? 700 : 500 }}>{label}</div>
+        <div className="text-sm" style={{ color: "#1a2233", fontWeight: checked ? 700 : 500 }}>{label}</div>
         {sub && <div className="text-xs" style={{ color: "#8393a7" }}>{sub}</div>}
       </div>
     </label>
   );
 }
-function Seg({ value, onChange, options }) {
-  return (
-    <div className="grid gap-2 mb-4" style={{ gridTemplateColumns: `repeat(${options.length}, 1fr)` }}>
-      {options.map((o) => (
-        <button key={o.value} onClick={() => onChange(o.value)} className="py-3 px-2 rounded-xl text-sm font-bold transition-all"
-          style={value === o.value
-            ? { background: `linear-gradient(135deg,${C},#3730a3)`, color: "#fff", boxShadow: "0 4px 12px rgba(67,56,202,0.25)" }
-            : { background: "#fff", color: "#566275", border: "1.5px solid #dce1ea" }}>
-          <div>{o.label}</div>
-          {o.sub && <div className="text-[11px] font-normal mt-0.5" style={{ opacity: 0.8 }}>{o.sub}</div>}
-        </button>
-      ))}
-    </div>
-  );
-}
-const Row = ({ label, value, sub, bold, hl, color }) => (
-  <div className="flex justify-between items-baseline gap-3 py-1.5" style={{ borderBottom: "1px solid #edf0f5" }}>
-    <span className={`text-sm ${bold ? "font-bold" : ""}`} style={{ color: sub ? "#8393a7" : (color || "#3a4557"), paddingLeft: sub ? 12 : 0 }}>{label}</span>
-    <span className={`text-sm whitespace-nowrap ${bold ? "font-bold" : "font-medium"}`} style={{ color: hl ? C : (color || "#1a2233"), fontVariantNumeric: "tabular-nums" }}>{value}</span>
+const Row = ({ label, value, sub, bold, color, top }) => (
+  <div className="flex justify-between items-baseline gap-3" style={{ padding: "8px 0", borderBottom: "1px solid #edf0f5", borderTop: top ? "1.5px solid #dce1ea" : "none", marginTop: top ? 6 : 0 }}>
+    <span className={`text-sm ${bold ? "font-bold" : ""}`} style={{ color: sub ? "#8393a7" : (color || "#3a4557"), paddingLeft: sub ? 14 : 0 }}>{label}</span>
+    <span className={`text-sm whitespace-nowrap ${bold ? "font-bold" : "font-medium"}`} style={{ color: color || "#1a2233", fontVariantNumeric: "tabular-nums" }}>{value}</span>
   </div>
+);
+const Card = ({ children, style, className = "" }) => (
+  <div className={`rounded-2xl p-5 mb-4 ${className}`} style={{ background: "#fff", border: "1px solid #e3e8f0", boxShadow: "0 2px 10px rgba(26,34,51,0.05)", ...style }}>{children}</div>
 );
 
 // ── 印刷用の概算書（別ウィンドウ） ──
@@ -119,57 +146,66 @@ function openPrint(inp, est) {
 function Summary({ title, s, accent, showSteps }) {
   const [open, setOpen] = useState(false);
   const steps = s.lines.flatMap((l) => (l.c.txd.steps || []).map((st) => ({ ...st, label: l.label })));
+  const cell = "text-right text-sm align-top pl-2 whitespace-nowrap";
   return (
-    <div className="rounded-xl p-5 mb-4" style={{ background: "#fff", border: `1.5px solid ${accent}33`, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-      <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-sm font-bold" style={{ color: accent }}>{title}</h3>
-        <span className="text-xs" style={{ color: "#8393a7" }}>概算</span>
+    <Card>
+      <div className="flex items-baseline justify-between mb-3 flex-wrap gap-2">
+        <h3 className="text-sm font-bold" style={{ color: "#1a2233" }}>{title}の内訳</h3>
+        <span className="text-[11px]" style={{ color: "#8393a7" }}>金額の内訳をご確認いただけます。</span>
       </div>
-      <table className="w-full mb-2" style={{ borderCollapse: "collapse" }}>
-        <thead><tr style={{ borderBottom: "1.5px solid #dce1ea" }}>
-          <th className="text-left text-xs font-bold pb-1.5" style={{ color: "#8393a7" }}>内容</th>
-          <th className="text-right text-xs font-bold pb-1.5 pl-2 whitespace-nowrap" style={{ color: "#8393a7" }}>報酬</th>
-          <th className="text-right text-xs font-bold pb-1.5 pl-2 whitespace-nowrap" style={{ color: "#b45309" }}>登免税・実費</th>
+      <table className="w-full" style={{ borderCollapse: "collapse" }}>
+        <thead><tr style={{ background: "#f6f8fc" }}>
+          <th className="text-left text-[11px] font-bold py-2 px-2 rounded-l-lg" style={{ color: "#566275" }}>内容</th>
+          <th className={`${cell} text-[11px] font-bold py-2`} style={{ color: "#566275" }}>報酬</th>
+          <th className={`${cell} text-[11px] font-bold py-2 pr-2 rounded-r-lg`} style={{ color: "#b45309" }}>登録免許税・実費</th>
         </tr></thead>
         <tbody>
-          {s.lines.map((l, i) => (
+          {s.lines.map((l, i) => { const Ic = lineIcon(l.it); return (
             <tr key={`l${i}`} style={{ borderBottom: "1px solid #edf0f5" }}>
-              <td className="py-1.5 align-top">
-                <div className="text-sm" style={{ color: "#1a2233" }}>{l.label}</div>
-                <div className="text-[11px]" style={{ color: "#8393a7" }}>
-                  基本 {fmt(l.c.fb)}{l.c.ep > 0 && `　＋不動産加算 ${fmt(l.c.ep)}`}{l.addSc > 0 && `　＋区分建物 ${fmt(l.addSc)}`}
+              <td className="py-2.5 px-2 align-top">
+                <div className="flex items-start gap-2">
+                  <span className="flex-shrink-0 flex items-center justify-center rounded-md" style={{ width: 26, height: 26, background: "#eef2ff", color: C, marginTop: 1 }}><Ic width={15} height={15} /></span>
+                  <div>
+                    <div className="text-sm" style={{ color: "#1a2233" }}>{l.label}</div>
+                    <div className="text-[11px]" style={{ color: "#8393a7" }}>基本 {fmt(l.c.fb)}{l.c.ep > 0 && ` ＋ 不動産加算 ${fmt(l.c.ep)}`}{l.addSc > 0 && ` ＋ 区分建物 ${fmt(l.addSc)}`}</div>
+                  </div>
                 </div>
               </td>
-              <td className="text-right text-sm align-top py-1.5 pl-2 whitespace-nowrap" style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(l.fee)}</td>
-              <td className="text-right text-sm align-top py-1.5 pl-2 whitespace-nowrap" style={{ fontVariantNumeric: "tabular-nums", color: "#b45309" }}>{fmt(l.tax)}</td>
-            </tr>
-          ))}
-          {s.jippi.map((j, i) => (
+              <td className={`${cell} py-2.5`} style={{ fontVariantNumeric: "tabular-nums", color: "#1a2233" }}>{fmt(l.fee)}</td>
+              <td className={`${cell} py-2.5 pr-2`} style={{ fontVariantNumeric: "tabular-nums", color: "#b45309" }}>{fmt(l.tax)}</td>
+            </tr>); })}
+          {s.jippi.map((j, i) => { const Ic = /郵送/.test(j.name) ? I.mail : I.doc; return (
             <tr key={`j${i}`} style={{ borderBottom: "1px solid #edf0f5" }}>
-              <td className="py-1.5 text-sm align-top" style={{ color: "#1a2233" }}>{j.name}</td>
-              <td className="text-right text-sm align-top py-1.5 pl-2 whitespace-nowrap" style={{ fontVariantNumeric: "tabular-nums" }}>{j.fee > 0 ? fmt(j.fee) : "—"}</td>
-              <td className="text-right text-sm align-top py-1.5 pl-2 whitespace-nowrap" style={{ fontVariantNumeric: "tabular-nums", color: "#b45309" }}>{j.jippi > 0 ? fmt(j.jippi) : "—"}</td>
-            </tr>
-          ))}
+              <td className="py-2.5 px-2 align-top">
+                <div className="flex items-center gap-2">
+                  <span className="flex-shrink-0 flex items-center justify-center rounded-md" style={{ width: 26, height: 26, background: "#f3f4f6", color: "#6b7689" }}><Ic width={15} height={15} /></span>
+                  <span className="text-sm" style={{ color: "#1a2233" }}>{j.name}</span>
+                </div>
+              </td>
+              <td className={`${cell} py-2.5`} style={{ fontVariantNumeric: "tabular-nums", color: "#1a2233" }}>{j.fee > 0 ? fmt(j.fee) : "—"}</td>
+              <td className={`${cell} py-2.5 pr-2`} style={{ fontVariantNumeric: "tabular-nums", color: "#b45309" }}>{j.jippi > 0 ? fmt(j.jippi) : "—"}</td>
+            </tr>); })}
         </tbody>
       </table>
-      <Row label="報酬（税抜）" value={fmt(s.feeExcl)} />
-      <Row label={`消費税（${CONFIG.taxRate}%）`} value={fmt(s.consumptionTax)} sub />
-      <Row label="報酬（税込）" value={fmt(s.feeIncl)} bold />
-      <Row label="登録免許税" value={fmt(s.regTax)} color="#b45309" />
-      {s.jippiTotal > 0 && <Row label="実費（非課税）" value={fmt(s.jippiTotal)} color="#b45309" />}
+      <div className="mt-1">
+        <Row label="報酬（税抜）" value={fmt(s.feeExcl)} />
+        <Row label={`消費税（${CONFIG.taxRate}%）`} value={fmt(s.consumptionTax)} sub />
+        <div className="rounded-lg px-2 -mx-2" style={{ background: "#f6f8fc" }}><Row label="報酬（税込）" value={fmt(s.feeIncl)} bold /></div>
+        <Row label="登録免許税" value={fmt(s.regTax)} color="#b45309" />
+        {s.jippiTotal > 0 && <Row label="実費（非課税）" value={fmt(s.jippiTotal)} color="#b45309" />}
+      </div>
       <div className="flex justify-between items-baseline mt-3 pt-3" style={{ borderTop: `2px solid ${accent}` }}>
         <span className="font-bold" style={{ color: "#1a2233" }}>{title} 合計</span>
         <span className="text-2xl font-bold" style={{ color: accent, fontVariantNumeric: "tabular-nums" }}>{fmt(s.grand)}</span>
       </div>
       {showSteps && steps.length > 0 && (
         <div className="mt-3">
-          <button onClick={() => setOpen(!open)} className="text-xs px-2 py-1 rounded"
-            style={{ background: open ? "#fef3c7" : "#f0f3f8", color: open ? "#92400e" : "#8393a7", border: "1px solid " + (open ? "#fde68a" : "#dce1ea") }}>
+          <button onClick={() => setOpen(!open)} className="text-xs px-2.5 py-1.5 rounded-lg"
+            style={{ background: open ? "#fef3c7" : "#f6f8fc", color: open ? "#92400e" : "#566275", border: "1px solid " + (open ? "#fde68a" : "#e3e8f0") }}>
             {open ? "▲ 登録免許税の計算過程を閉じる" : "▼ 登録免許税の計算過程"}
           </button>
           {open && (
-            <div className="p-2.5 rounded-lg mt-2" style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
+            <div className="p-3 rounded-lg mt-2" style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
               {steps.map((st, i) => (
                 <div key={i} className="mb-1 text-xs" style={{ color: "#78350f", fontVariantNumeric: "tabular-nums" }}>
                   <span className="font-medium" style={{ color: "#92400e" }}>{st.label}／{st.l}：</span>{st.v}
@@ -179,6 +215,32 @@ function Summary({ title, s, accent, showSteps }) {
           )}
         </div>
       )}
+    </Card>
+  );
+}
+
+// 合計を示すヒーローカード（背景は街並みのシルエット）
+function Hero({ est, hasInput }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl p-5 mb-4" style={{ background: `linear-gradient(135deg,${C} 0%,#3b3aa8 55%,#2f2f8f 100%)`, color: "#fff", boxShadow: "0 10px 28px rgba(67,56,202,0.32)" }}>
+      <svg aria-hidden="true" viewBox="0 0 600 160" preserveAspectRatio="xMaxYMax slice" style={{ position: "absolute", right: -10, bottom: -6, width: "78%", height: "100%", opacity: 0.16, pointerEvents: "none" }} fill="#fff">
+        <path d="M0 160V110h30V80h20v30h24V60h28v50h22V90h30v20h26V40h40v70h20V70h34v40h22V55h30v55h24V85h30v25h22V30h44v80h24V95h30v65z" />
+        <g fill="#2f2f8f"><rect x="126" y="70" width="6" height="6" /><rect x="138" y="70" width="6" height="6" /><rect x="126" y="84" width="6" height="6" /><rect x="138" y="84" width="6" height="6" /><rect x="212" y="52" width="6" height="6" /><rect x="224" y="52" width="6" height="6" /><rect x="212" y="66" width="6" height="6" /><rect x="224" y="66" width="6" height="6" /><rect x="212" y="80" width="6" height="6" /><rect x="224" y="80" width="6" height="6" /><rect x="422" y="44" width="6" height="6" /><rect x="434" y="44" width="6" height="6" /><rect x="446" y="44" width="6" height="6" /><rect x="422" y="58" width="6" height="6" /><rect x="434" y="58" width="6" height="6" /><rect x="446" y="58" width="6" height="6" /><rect x="422" y="72" width="6" height="6" /><rect x="434" y="72" width="6" height="6" /><rect x="446" y="72" width="6" height="6" /></g>
+      </svg>
+      <div className="relative flex items-start gap-3">
+        <span className="flex-shrink-0 flex items-center justify-center rounded-xl" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.22)" }}><I.calc width={24} height={24} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-bold" style={{ color: "rgba(255,255,255,0.78)" }}>買主様ご負担 概算合計（報酬税込＋登録免許税＋実費）</div>
+          <div className="font-bold mt-1" style={{ fontSize: 36, lineHeight: 1.15, fontVariantNumeric: "tabular-nums", letterSpacing: "-0.01em" }}>{fmt(est.buyer.grand)}</div>
+          <div className="flex gap-x-4 gap-y-1 mt-2 text-xs flex-wrap" style={{ color: "rgba(255,255,255,0.88)" }}>
+            <span>報酬（税込） <b>{fmt(est.buyer.feeIncl)}</b></span>
+            <span>登録免許税 <b>{fmt(est.buyer.regTax)}</b></span>
+            {est.buyer.jippiTotal > 0 && <span>実費 <b>{fmt(est.buyer.jippiTotal)}</b></span>}
+          </div>
+          {!hasInput && <div className="text-xs mt-2.5 inline-block px-2 py-1 rounded-md" style={{ background: "rgba(253,230,138,0.18)", color: "#fde68a" }}>評価額を入力すると金額が更新されます</div>}
+        </div>
+      </div>
+      <div className="relative text-[11px] mt-3 text-right" style={{ color: "rgba(255,255,255,0.6)" }}>登記で、次の一歩を。</div>
     </div>
   );
 }
@@ -187,107 +249,92 @@ export default function Estimate() {
   const [inp, setInp] = useState(DEFAULT_INPUT);
   const u = (p) => setInp((s) => ({ ...s, ...p }));
   const est = useMemo(() => buildEstimate(inp), [inp]);
-  const isTr = inp.regType !== "preservation";
   const hasInput = est.land > 0 || est.bld > 0;
 
   return (
     <main className="mx-auto px-4 py-6" style={{ maxWidth: 1100 }}>
       <style>{`
         .est-grid{display:grid;grid-template-columns:1fr;gap:24px;align-items:start}
-        @media(min-width:900px){.est-grid{grid-template-columns:1fr 1fr}.est-sticky{position:sticky;top:80px}}
+        @media(min-width:900px){.est-grid{grid-template-columns:1fr 1fr}.est-sticky{position:sticky;top:84px}}
+        .est-details>summary{list-style:none}.est-details>summary::-webkit-details-marker{display:none}.est-details>summary::before{content:'▶';font-size:9px;margin-right:6px;display:inline-block;transition:transform .15s}.est-details[open]>summary::before{transform:rotate(90deg)}
+        .est-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238393a7'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center}
       `}</style>
-      <div className="mb-5">
-        <h1 className="text-lg font-bold" style={{ color: "#1a2233" }}>登記費用 概算シミュレーター</h1>
-        <p className="text-xs mt-1" style={{ color: "#6b7689" }}>固定資産税評価額を入れるだけで、司法書士報酬・登録免許税・実費の概算が確認できます。見積依頼の前の目安としてご利用ください。</p>
-      </div>
 
       <div className="est-grid">
         {/* ── 入力 ── */}
         <div style={{ minWidth: 0 }}>
-          <div className="rounded-xl p-5 mb-4" style={{ background: "#fff", border: "1px solid #e5e9f0", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}>
-            <h2 className="text-sm font-bold mb-3" style={{ color: C }}>1. 登記の内容</h2>
-            <Seg value={inp.regType} onChange={(v) => u({ regType: v, propCount: v === "preservation" ? 1 : 2 })} options={[
-              { value: "transfer", label: "売買（中古・土地）", sub: "所有権移転登記" },
-              { value: "preservation", label: "新築", sub: "所有権保存登記" },
-            ]} />
-
-            <h2 className="text-sm font-bold mb-3" style={{ color: C }}>2. 固定資産税評価額</h2>
-            <div className="p-3 rounded-lg mb-3" style={{ background: "#eff6ff", border: "1px solid #bfdbfe" }}>
-              {isTr && <YenInput label="土地の評価額（合計）" hint="固定資産評価証明書・課税明細の価格" value={inp.landValue} onChange={(v) => u({ landValue: v })} placeholder="例: 10000000" note="複数筆はすべて合計して入力" />}
-              <YenInput label={isTr ? "建物の評価額（合計）" : "建物の課税標準額"} hint={isTr ? "" : "新築は法務局の認定基準価格（評価額がまだない場合）"} value={inp.buildingValue} onChange={(v) => u({ buildingValue: v })} placeholder="例: 5000000" note={isTr ? "建物がない土地のみの取引は空欄" : ""} />
-              <div className="text-xs" style={{ color: "#1e40af" }}>※ 区分建物（マンション）の敷地は、敷地全体の評価額に敷地権割合を掛けた金額を土地欄に入れてください。</div>
+          <Card>
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-lg" style={{ background: "#eef2ff", color: C }}>
+              <I.home width={16} height={16} />
+              <span className="text-xs font-bold">売買による所有権移転登記（中古住宅・土地）の概算</span>
             </div>
 
-            <div className="grid grid-cols-2 gap-x-3 mb-2">
+            <Step n={1} title="固定資産税評価額を入力" sub="固定資産評価証明書・課税明細の価格をご入力ください。" />
+            <div className="p-4 rounded-xl mb-5" style={{ background: "#f3f6fc", border: "1px solid #dbe4f3" }}>
+              <YenInput label="土地の評価額（合計）" help="固定資産評価証明書または固定資産税の課税明細書に記載の「価格（評価額）」です。複数筆ある場合はすべて合計して入力してください。" value={inp.landValue} onChange={(v) => u({ landValue: v })} placeholder="例: 10,000,000" note="複数筆はすべて合計して入力" />
+              <YenInput label="建物の評価額（合計）" help="固定資産評価証明書または課税明細書に記載の建物の「価格（評価額）」です。建物のない土地のみの取引は空欄のままにしてください。" value={inp.buildingValue} onChange={(v) => u({ buildingValue: v })} placeholder="例: 5,000,000" note="建物がない土地のみの取引は空欄" />
+              <div className="text-[11px] leading-relaxed" style={{ color: "#4b5a75" }}>※ 区分建物（マンション）の敷地は、敷地全体の評価額に敷地権割合を掛けた金額を土地欄に入れてください。</div>
+            </div>
+
+            <Step n={2} title="物件・ローンの条件" sub="該当するものを選択してください。" />
+            <div className="grid grid-cols-2 gap-x-4 mb-1">
               <div className="mb-3">
                 <Label hint="土地の筆数＋建物の個数">不動産の個数</Label>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => u({ propCount: Math.max(1, (Number(inp.propCount) || 1) - 1) })} className="w-9 h-9 rounded-lg text-lg flex-shrink-0" style={{ background: "#f0f3f8", border: "1px solid #dce1ea", color: "#3a4557" }}>−</button>
+                  <button onClick={() => u({ propCount: Math.max(1, (Number(inp.propCount) || 1) - 1) })} className="w-10 h-10 rounded-lg text-lg flex-shrink-0" style={{ background: "#f3f6fc", border: "1px solid #dbe4f3", color: "#3a4557" }}>−</button>
                   <input type="number" inputMode="numeric" min={1} value={inp.propCount}
                     onChange={(e) => u({ propCount: e.target.value === "" ? "" : Math.max(1, Math.floor(Number(e.target.value) || 1)) })}
-                    onFocus={focus} onBlur={blur} className="w-full px-2 py-2 rounded-lg text-base outline-none text-center" style={inputStyle} />
-                  <button onClick={() => u({ propCount: (Number(inp.propCount) || 0) + 1 })} className="w-9 h-9 rounded-lg text-lg flex-shrink-0" style={{ background: "#f0f3f8", border: "1px solid #dce1ea", color: "#3a4557" }}>＋</button>
-                  <span className="text-xs flex-shrink-0" style={{ color: "#8393a7" }}>個</span>
+                    onFocus={focus} onBlur={blur} className="w-full px-2 py-2 rounded-lg text-base outline-none text-center" style={{ ...inputStyle, minWidth: 0 }} />
+                  <button onClick={() => u({ propCount: (Number(inp.propCount) || 0) + 1 })} className="w-10 h-10 rounded-lg text-lg flex-shrink-0" style={{ background: "#f3f6fc", border: "1px solid #dbe4f3", color: "#3a4557" }}>＋</button>
                 </div>
               </div>
               <div className="mb-3">
-                <Label>住宅用家屋証明書</Label>
-                <select value={inp.housingCert} onChange={(e) => u({ housingCert: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer" style={{ ...inputStyle, appearance: "none",
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238393a7'/%3E%3C/svg%3E")`,
-                    backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center" }}>
+                <Label help="買主が自ら居住する住宅で、床面積50㎡以上・新耐震基準適合（または昭和57年以降の建築）などの要件を満たすと、建物の登録免許税と抵当権設定の税率が軽減されます。市区町村が発行します。">住宅用家屋証明書</Label>
+                <select value={inp.housingCert} onChange={(e) => u({ housingCert: e.target.value })} className="est-select w-full px-3 py-2.5 rounded-lg text-sm outline-none cursor-pointer" style={{ ...inputStyle, height: 40 }}>
                   <option value="none">なし（原則税率）</option>
                   <option value="general">あり：一般住宅</option>
                   <option value="premium">あり：長期優良・低炭素</option>
                 </select>
-                <div className="text-[11px] mt-1" style={{ color: "#8393a7" }}>買主が自ら居住・床面積50㎡以上・新耐震基準等の要件を満たす場合</div>
               </div>
             </div>
 
             <Toggle label="区分建物（マンション）" sub="区分建物加算 ＋5,000円" checked={inp.kubun} onChange={(v) => u({ kubun: v })} color="#f59e0b" />
             <Toggle label="住宅ローンあり（抵当権設定）" sub="借入額をもとに報酬・登録免許税を計算" checked={inp.hasLoan} onChange={(v) => u({ hasLoan: v })} />
             {inp.hasLoan && (
-              <div className="p-3 rounded-lg mt-1 mb-2" style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
-                <YenInput label="債権額（借入額）" value={inp.loanAmount} onChange={(v) => u({ loanAmount: v })} placeholder="例: 30000000" />
+              <div className="p-4 rounded-xl mt-1 mb-2" style={{ background: "#fffbeb", border: "1px solid #fde68a" }}>
+                <YenInput label="債権額（借入額）" value={inp.loanAmount} onChange={(v) => u({ loanAmount: v })} placeholder="例: 30,000,000" />
               </div>
             )}
 
-            <details className="mt-3">
-              <summary className="text-xs cursor-pointer select-none" style={{ color: "#6b7689" }}>売主側の登記も見る（任意）</summary>
+            <details className="mt-3 est-details">
+              <summary className="text-xs cursor-pointer select-none font-medium" style={{ color: C }}>売主側の登記も見る（任意）</summary>
               <div className="mt-2 pl-1">
                 <Toggle label="抵当権抹消" sub="売主のローン完済に伴う抹消" checked={inp.sellerDeletion} onChange={(v) => u({ sellerDeletion: v })} color="#6b7280" />
                 <Toggle label="登記名義人住所変更" sub="売主の現住所が登記と異なる場合" checked={inp.sellerAddress} onChange={(v) => u({ sellerAddress: v })} color="#6b7280" />
               </div>
             </details>
-          </div>
+          </Card>
         </div>
 
         {/* ── 結果 ── */}
         <div className="est-sticky" style={{ minWidth: 0 }}>
-          <div className="rounded-xl p-5 mb-4" style={{ background: `linear-gradient(135deg,${C},#3730a3)`, color: "#fff", boxShadow: "0 4px 16px rgba(67,56,202,0.25)" }}>
-            <div className="text-xs font-bold mb-1" style={{ color: "rgba(255,255,255,0.7)" }}>買主様ご負担 概算合計（報酬税込＋登録免許税＋実費）</div>
-            <div className="text-3xl font-bold" style={{ fontVariantNumeric: "tabular-nums" }}>{fmt(est.buyer.grand)}</div>
-            <div className="flex gap-4 mt-2 text-xs flex-wrap" style={{ color: "rgba(255,255,255,0.85)" }}>
-              <span>報酬（税込） {fmt(est.buyer.feeIncl)}</span>
-              <span>登録免許税 {fmt(est.buyer.regTax)}</span>
-              {est.buyer.jippiTotal > 0 && <span>実費 {fmt(est.buyer.jippiTotal)}</span>}
-            </div>
-            {!hasInput && <div className="text-xs mt-2" style={{ color: "#fde68a" }}>← 評価額を入力すると金額が更新されます</div>}
-          </div>
-
+          <Hero est={est} hasInput={hasInput} />
           <Summary title="買主様ご負担" s={est.buyer} accent={C} showSteps />
           {est.seller && <Summary title="売主様ご負担" s={est.seller} accent="#6b7280" />}
 
           <button onClick={() => openPrint(inp, est)} disabled={!hasInput}
-            className="w-full py-3 rounded-xl text-sm font-bold mb-3"
-            style={{ background: hasInput ? "#fff" : "#f0f3f8", color: hasInput ? C : "#a0aec0", border: `1.5px solid ${hasInput ? "#c7d2fe" : "#dce1ea"}`, cursor: hasInput ? "pointer" : "default" }}>
-            🖨 概算書を印刷・PDF保存
+            className="w-full py-3 rounded-xl text-sm font-bold mb-4 flex items-center justify-center gap-2"
+            style={{ background: "#fff", color: hasInput ? C : "#a0aec0", border: `1.5px solid ${hasInput ? "#c7d2fe" : "#e3e8f0"}`, cursor: hasInput ? "pointer" : "default", boxShadow: hasInput ? "0 2px 8px rgba(67,56,202,0.10)" : "none" }}>
+            <I.print width={18} height={18} /> 概算書を印刷・PDF保存
           </button>
 
-          <div className="text-[11px] leading-relaxed px-1" style={{ color: "#8393a7" }}>
-            ※ 本シミュレーターの金額は概算です。実際の費用は登記事項・評価証明書・契約内容の確認後に確定します。<br />
-            ※ 登録免許税の税率：土地売買15/1000は令和8年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで。<br />
-            ※ 相続・贈与・根抵当権・敷地権の細かな按分など、この画面で扱えない案件は{CONFIG.officeName}までお問い合わせください。{CONFIG.contact && <>（{CONFIG.contact}）</>}
+          <div className="flex gap-2.5 rounded-xl p-3.5" style={{ background: "#eef4ff", border: "1px solid #d6e2fb" }}>
+            <span className="flex-shrink-0" style={{ color: "#3b82f6", marginTop: 1 }}><I.info width={16} height={16} /></span>
+            <div className="text-[11px] leading-relaxed" style={{ color: "#3a4a66" }}>
+              ※ 本シミュレーターの金額は概算です。実際の費用は登記事項・評価証明書・契約内容の確認後に確定します。<br />
+              ※ 登録免許税の税率：土地売買15/1000は令和8年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで。<br />
+              ※ 相続・贈与・根抵当権・敷地権の細かな按分など、この画面で扱えない案件は{CONFIG.officeName}までお問い合わせください。{CONFIG.contact && <>（{CONFIG.contact}）</>}
+            </div>
           </div>
         </div>
       </div>

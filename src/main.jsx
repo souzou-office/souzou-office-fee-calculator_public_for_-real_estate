@@ -18,11 +18,13 @@ function Root() {
         boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
         fontFamily: "'Noto Sans JP',sans-serif",
       }}>
-        <div style={{ maxWidth: 1100, width: "100%", margin: "0 auto", padding: "10px 16px", display: "flex", alignItems: "center", gap: 16 }}>
+        <style>{`.toki-tagline{font-size:12px;color:#6b7689;padding-left:14px;border-left:1px solid #e3e8f0}@media(max-width:640px){.toki-tagline{display:none}.toki-sub{display:none}}`}</style>
+        <div style={{ maxWidth: 1100, width: "100%", margin: "0 auto", padding: "12px 16px", display: "flex", alignItems: "center", gap: 14 }}>
           <Logo />
+          <span className="toki-tagline">不動産登記の費用を、かんたんに。</span>
           <div style={{ marginLeft: "auto", textAlign: "right", fontSize: 12, color: "#6b7689", lineHeight: 1.4 }}>
             <div style={{ fontWeight: 700, color: "#1a2233" }}>{CONFIG.officeName}</div>
-            <div>不動産会社様向け 概算シミュレーター</div>
+            <div className="toki-sub">不動産会社様向け 概算シミュレーター</div>
           </div>
         </div>
       </div>
