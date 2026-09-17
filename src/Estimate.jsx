@@ -135,7 +135,7 @@ function openPrint(inp, est) {
   ${block("買主様ご負担", est.buyer)}
   ${est.seller ? block("売主様ご負担", est.seller) : ""}
   <div class=note><b>※ 本書の報酬・登録免許税・実費は、入力いただいた評価額等に基づく計算例（一例）です。</b>実際の費用は物件・登記事項・評価証明書・契約内容の確認後に確定し、本書の金額と異なる場合があります。正式なお見積りは下記までご依頼ください。<br>
-  ※ 登録免許税の税率は作成日時点の法令によります（土地売買15/1000は令和8年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで）。</div>
+  ※ 登録免許税の税率は作成日時点の法令によります（土地売買15/1000は令和11年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで）。</div>
   <div class=office>${CONFIG.officeName}${CONFIG.contact ? "　" + CONFIG.contact : ""}</div>
   <script>window.onload=function(){setTimeout(function(){window.print()},250)}</script></body></html>`;
   const w = window.open("", "_blank", "width=820,height=900");
@@ -253,6 +253,10 @@ export default function Estimate() {
   const u = (p) => setInp((s) => ({ ...s, ...p }));
   const est = useMemo(() => buildEstimate(inp), [inp]);
   const hasInput = est.land > 0 || est.bld > 0;
+  const contactHref = "mailto:" + CONFIG.contactEmail
+    + "?subject=" + encodeURIComponent("【登記費用シミュレーター】正式見積・カスタマイズの相談")
+    + "&body=" + encodeURIComponent("会社名：\nご担当者名：\nお電話：\n\nご相談内容（正式見積 / 専用画面 / 案件テンプレート / eKYC / 電子署名 / オンライン申請 など）：\n\n"
+      + (hasInput ? `\n――― シミュレーター入力内容 ―――\n土地 評価額：${est.land.toLocaleString()}円\n建物 評価額：${est.bld.toLocaleString()}円\n不動産の個数：${est.propCount}個${inp.kubun ? "（区分建物）" : ""}\n住宅用家屋証明書：${{ none: "なし", general: "一般住宅", premium: "長期優良・低炭素" }[inp.housingCert]}\n${inp.hasLoan ? `抵当権設定 債権額：${est.loan.toLocaleString()}円\n` : ""}買主負担 概算合計：${est.buyer.grand.toLocaleString()}円\n` : ""));
 
   return (
     <main className="mx-auto px-4 py-6" style={{ maxWidth: 1100 }}>
@@ -335,12 +339,29 @@ export default function Estimate() {
             <span className="flex-shrink-0" style={{ color: "#3b82f6", marginTop: 1 }}><I.info width={16} height={16} /></span>
             <div className="text-[11px] leading-relaxed" style={{ color: "#3a4a66" }}>
               <b style={{ color: "#1e3a8a" }}>※ この画面に表示される報酬・登録免許税・実費は、入力内容に基づく計算例（一例）です。</b>実際の費用は物件・登記事項・評価証明書・契約内容の確認後に確定し、表示額と異なる場合があります。正式なお見積りは{CONFIG.officeName}までご依頼ください。<br />
-              ※ 登録免許税の税率：土地売買15/1000は令和8年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで。<br />
+              ※ 登録免許税の税率：土地売買15/1000は令和11年3月31日まで、住宅用家屋証明による軽減は令和9年3月31日まで。<br />
               ※ 相続・贈与・根抵当権・敷地権の細かな按分など、この画面で扱えない案件は{CONFIG.officeName}までお問い合わせください。{CONFIG.contact && <>（{CONFIG.contact}）</>}
             </div>
           </div>
         </div>
       </div>
+
+      {/* ── 正式見積・カスタマイズの相談 ── */}
+      <section className="rounded-2xl p-5 mt-6" style={{ background: "#fff", border: "1.5px solid #c7d2fe", boxShadow: "0 4px 16px rgba(67,56,202,0.10)" }}>
+        <div className="flex flex-col md:flex-row md:items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-bold mb-1" style={{ color: "#1a2233" }}>このシミュレーターは一例です。</div>
+            <p className="text-xs leading-relaxed" style={{ color: "#3a4557" }}>
+              御社の案件パターン・報酬体系に合わせた専用画面のほか、案件テンプレート、eKYC、電子署名、オンライン申請まで、御社の業務フローに合わせて設計できます。正式なお見積りのご依頼もこちらから。
+            </p>
+          </div>
+          <a href={contactHref} className="flex-shrink-0 inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-bold text-white"
+            style={{ background: `linear-gradient(135deg,${C},#3730a3)`, boxShadow: "0 6px 16px rgba(67,56,202,0.28)", textDecoration: "none" }}>
+            <I.mail width={18} height={18} /> 正式見積・御社向けカスタマイズを相談する
+          </a>
+        </div>
+        <div className="text-[11px] mt-2 md:text-right" style={{ color: "#8393a7" }}>{CONFIG.officeName}　{CONFIG.contactEmail}</div>
+      </section>
     </main>
   );
 }
