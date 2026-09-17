@@ -225,8 +225,8 @@ const HERO_URL = ((import.meta.env && import.meta.env.BASE_URL) || "/") + "hero.
 function Hero({ est, hasInput }) {
   return (
     <div className="relative overflow-hidden rounded-2xl p-5 mb-4" style={{
-      background: `linear-gradient(95deg,${C} 0%,rgba(67,56,202,0.96) 34%,rgba(67,56,202,0.55) 62%,rgba(67,56,202,0.18) 100%), url(${HERO_URL}) right center / cover no-repeat, linear-gradient(135deg,${C} 0%,#3b3aa8 55%,#2f2f8f 100%)`,
-      color: "#fff", boxShadow: "0 10px 28px rgba(67,56,202,0.32)" }}>
+      background: `linear-gradient(95deg,${C} 0%,rgba(67,56,202,0.96) 34%,rgba(67,56,202,0.62) 62%,rgba(67,56,202,0.30) 100%), url(${HERO_URL}) right center / cover no-repeat, linear-gradient(135deg,${C} 0%,#3b3aa8 55%,#2f2f8f 100%)`,
+      color: "#fff", textShadow: "0 1px 3px rgba(30,27,100,0.55)", boxShadow: "0 10px 28px rgba(67,56,202,0.32)" }}>
       <div className="relative flex items-start gap-3">
         <span className="flex-shrink-0 flex items-center justify-center rounded-xl" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.22)" }}><I.calc width={24} height={24} /></span>
         <div className="min-w-0 flex-1">
@@ -240,7 +240,7 @@ function Hero({ est, hasInput }) {
           {!hasInput && <div className="text-xs mt-2.5 inline-block px-2 py-1 rounded-md" style={{ background: "rgba(253,230,138,0.18)", color: "#fde68a" }}>評価額を入力すると金額が更新されます</div>}
         </div>
       </div>
-      <div className="relative text-[11px] mt-3 text-right" style={{ color: "rgba(255,255,255,0.6)" }}>登記で、次の一歩を。</div>
+      <div className="relative text-[11px] mt-3 text-right" style={{ color: "rgba(255,255,255,0.85)" }}>登記で、次の一歩を。</div>
     </div>
   );
 }
