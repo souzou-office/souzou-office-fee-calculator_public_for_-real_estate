@@ -220,13 +220,13 @@ function Summary({ title, s, accent, showSteps }) {
 }
 
 // 合計を示すヒーローカード（背景は街並みのシルエット）
+// 合計を示すヒーローカード。public/hero.jpg があれば写真を背景に敷き、なければグラデーションのみ
+const HERO_URL = ((import.meta.env && import.meta.env.BASE_URL) || "/") + "hero.jpg";
 function Hero({ est, hasInput }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl p-5 mb-4" style={{ background: `linear-gradient(135deg,${C} 0%,#3b3aa8 55%,#2f2f8f 100%)`, color: "#fff", boxShadow: "0 10px 28px rgba(67,56,202,0.32)" }}>
-      <svg aria-hidden="true" viewBox="0 0 600 160" preserveAspectRatio="xMaxYMax slice" style={{ position: "absolute", right: -10, bottom: -6, width: "78%", height: "100%", opacity: 0.16, pointerEvents: "none" }} fill="#fff">
-        <path d="M0 160V110h30V80h20v30h24V60h28v50h22V90h30v20h26V40h40v70h20V70h34v40h22V55h30v55h24V85h30v25h22V30h44v80h24V95h30v65z" />
-        <g fill="#2f2f8f"><rect x="126" y="70" width="6" height="6" /><rect x="138" y="70" width="6" height="6" /><rect x="126" y="84" width="6" height="6" /><rect x="138" y="84" width="6" height="6" /><rect x="212" y="52" width="6" height="6" /><rect x="224" y="52" width="6" height="6" /><rect x="212" y="66" width="6" height="6" /><rect x="224" y="66" width="6" height="6" /><rect x="212" y="80" width="6" height="6" /><rect x="224" y="80" width="6" height="6" /><rect x="422" y="44" width="6" height="6" /><rect x="434" y="44" width="6" height="6" /><rect x="446" y="44" width="6" height="6" /><rect x="422" y="58" width="6" height="6" /><rect x="434" y="58" width="6" height="6" /><rect x="446" y="58" width="6" height="6" /><rect x="422" y="72" width="6" height="6" /><rect x="434" y="72" width="6" height="6" /><rect x="446" y="72" width="6" height="6" /></g>
-      </svg>
+    <div className="relative overflow-hidden rounded-2xl p-5 mb-4" style={{
+      background: `linear-gradient(95deg,${C} 0%,rgba(67,56,202,0.96) 34%,rgba(67,56,202,0.55) 62%,rgba(67,56,202,0.18) 100%), url(${HERO_URL}) right center / cover no-repeat, linear-gradient(135deg,${C} 0%,#3b3aa8 55%,#2f2f8f 100%)`,
+      color: "#fff", boxShadow: "0 10px 28px rgba(67,56,202,0.32)" }}>
       <div className="relative flex items-start gap-3">
         <span className="flex-shrink-0 flex items-center justify-center rounded-xl" style={{ width: 44, height: 44, background: "rgba(255,255,255,0.16)", border: "1px solid rgba(255,255,255,0.22)" }}><I.calc width={24} height={24} /></span>
         <div className="min-w-0 flex-1">
